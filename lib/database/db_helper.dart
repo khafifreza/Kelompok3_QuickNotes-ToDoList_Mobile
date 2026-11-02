@@ -19,7 +19,12 @@ class DBHelper {
     final dbPath = await getDatabasesPath();
     final path = join(dbPath, filePath);
 
-    return await openDatabase(path, version: 1, onCreate: _createDB);
+    return await openDatabase(
+      path,
+      version: 2,
+      onCreate: _createDB,
+      onUpgrade: _upgradeDB,
+    );
   }
 
   Future _createDB(Database db, int version) async {
@@ -28,9 +33,18 @@ class DBHelper {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
-        createdAt TEXT NOT NULL
+        createdAt TEXT NOT NULL,
+        isPinned INTEGER NOT NULL DEFAULT 0
       )
     ''');
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute(
+        'ALTER TABLE notes ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0',
+      );
+    }
   }
 
   Future<int> createNote(Note note) async {
@@ -38,16 +52,27 @@ class DBHelper {
     return db.insert('notes', note.toMap());
   }
 
-  Future<List<Note>> readAllNotes({String searchQuery = ""}) async {
+  Future<List<Note>> readAllNotes({
+    String searchQuery = "",
+    bool pinnedOnly = false,
+  }) async {
     final db = await instance.database;
-    final result = searchQuery.trim().isEmpty
-        ? await db.query('notes', orderBy: 'id DESC')
-        : await db.query(
-            'notes',
-            where: 'title LIKE ?',
-            whereArgs: ['%$searchQuery%'],
-            orderBy: 'id DESC',
-          );
+    final conditions = <String>[];
+    final whereArgs = <Object>[];
+    if (searchQuery.trim().isNotEmpty) {
+      conditions.add('title LIKE ?');
+      whereArgs.add('%${searchQuery.trim()}%');
+    }
+    if (pinnedOnly) {
+      conditions.add('isPinned = ?');
+      whereArgs.add(1);
+    }
+    final result = await db.query(
+      'notes',
+      where: conditions.isEmpty ? null : conditions.join(' AND '),
+      whereArgs: conditions.isEmpty ? null : whereArgs,
+      orderBy: 'id DESC',
+    );
     return result.map((json) => Note.fromMap(json)).toList();
   }
 

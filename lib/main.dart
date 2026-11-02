@@ -28,8 +28,12 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        primarySwatch: Colors.teal,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF111115),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFFA99AFF),
+          brightness: Brightness.dark,
+        ),
       ),
       home: const HomeScreen(),
     );

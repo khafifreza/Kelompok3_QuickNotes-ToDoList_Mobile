@@ -3,9 +3,15 @@ class Note {
   String title;
   String content;
   String createdAt;
+  bool isPinned;
 
-  Note({this.id, required this.title, required this.content, required this.createdAt});
-
+  Note({
+    this.id,
+    required this.title,
+    required this.content,
+    required this.createdAt,
+    this.isPinned = false,
+  });
 
   Map<String, dynamic> toMap() {
     return {
@@ -13,6 +19,7 @@ class Note {
       'title': title,
       'content': content,
       'createdAt': createdAt,
+      'isPinned': isPinned ? 1 : 0,
     };
   }
 
@@ -22,6 +29,7 @@ class Note {
       title: map['title'],
       content: map['content'],
       createdAt: map['createdAt'],
+      isPinned: (map['isPinned'] as int? ?? 0) == 1,
     );
   }
 }
