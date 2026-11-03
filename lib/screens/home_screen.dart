@@ -12,9 +12,17 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  static const _accent = Color(0xFFA99AFF);
-  static const _surface = Color(0xFF1B1B21);
-  static const _muted = Color(0xFF92919D);
+  static const _accent = Color(0xFF32866A);
+  static const _surface = Color(0xFFFFFFFF);
+  static const _muted = Color(0xFF7C8790);
+  static const _noteColors = [
+    Color(0xFFFFF0B8),
+    Color(0xFFD8F1F4),
+    Color(0xFFE9DDF7),
+    Color(0xFFFFE2CF),
+    Color(0xFFE3E9F1),
+    Color(0xFFDDF0E4),
+  ];
 
   List<Note> _notes = [];
   bool _isLoading = true;
@@ -126,12 +134,108 @@ class _HomeScreenState extends State<HomeScreen> {
         .formatTimeOfDay(TimeOfDay.fromDateTime(date));
   }
 
+  Widget _buildNoteCard(Note note, int index) {
+    final cardColor = note.isPinned
+        ? const Color(0xFFE0F0E7)
+        : _noteColors[index % _noteColors.length];
+
+    return Card(
+      margin: const EdgeInsets.all(6),
+      color: cardColor,
+      elevation: 0,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => _openEditor(note: note),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      note.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xFF28312E),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    tooltip: note.isPinned ? 'Unpin note' : 'Pin note',
+                    onPressed: () => _togglePin(note),
+                    icon: Icon(
+                      note.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                      color: note.isPinned ? _accent : const Color(0xFF68736F),
+                      size: 18,
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    tooltip: 'More note actions',
+                    color: _surface,
+                    onSelected: (action) {
+                      if (action == 'delete') _deleteNote(note);
+                    },
+                    itemBuilder: (context) => const [
+                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                    icon: const Icon(
+                      Icons.delete_outline,
+                      color: Color(0xFF68736F),
+                      size: 20,
+                    ),
+                  ),
+                ],
+              ),
+              if (note.content.isNotEmpty) ...[
+                Text(
+                  note.content,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Color(0xFF59645F), height: 1.4),
+                ),
+                const Spacer(),
+              ] else
+                const Spacer(),
+              Row(
+                children: [
+                  Text(
+                    note.isPinned ? 'Pinned' : 'Note',
+                    style: const TextStyle(
+                      color: Color(0xFF53645C),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatTime(note.createdAt),
+                    style: const TextStyle(
+                      color: Color(0xFF68736F),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       floatingActionButton: FloatingActionButton(
         backgroundColor: _accent,
-        foregroundColor: const Color(0xFF17151F),
+        foregroundColor: Colors.white,
         onPressed: () => _openEditor(),
         child: const Icon(Icons.add),
       ),
@@ -150,17 +254,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'My notes',
+                              'Quick Notes',
                               style: TextStyle(
-                                fontSize: 30,
+                                color: Color(0xFF26312D),
+                                fontSize: 27,
                                 fontWeight: FontWeight.w700,
-                                letterSpacing: -0.8,
+                                letterSpacing: -0.5,
                               ),
-                            ),
-                            SizedBox(height: 4),
-                            Text(
-                              'A little space for your mind.',
-                              style: TextStyle(color: _muted, fontSize: 14),
                             ),
                           ],
                         ),
@@ -189,11 +289,21 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Container(
                           width: 44,
                           height: 44,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             color: _surface,
                             shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.05),
+                                blurRadius: 12,
+                                offset: const Offset(0, 3),
+                              ),
+                            ],
                           ),
-                          child: const Icon(Icons.tune, color: _muted),
+                          child: const Icon(
+                            Icons.tune,
+                            color: Color(0xFF44524B),
+                          ),
                         ),
                       ),
                     ],
@@ -203,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _searchController,
                     onChanged: (value) => _refreshNotes(query: value),
                     decoration: InputDecoration(
-                      hintText: 'Search your thoughts',
+                      hintText: 'Search your notes',
                       hintStyle: const TextStyle(color: _muted),
                       prefixIcon: const Icon(Icons.search, color: _muted),
                       suffixIcon: _searchController.text.isEmpty
@@ -220,21 +330,25 @@ class _HomeScreenState extends State<HomeScreen> {
                       fillColor: _surface,
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(18),
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide.none,
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 14),
                   Row(
                     children: [
                       _NoteTab(
-                        label: 'All notes',
+                        label: 'All',
                         count: _showPinnedOnly ? null : _notes.length,
                         selected: !_showPinnedOnly,
                         onTap: () => _setPinnedFilter(false),
                       ),
-                      const SizedBox(width: 20),
+                      const SizedBox(width: 8),
                       _NoteTab(
                         label: 'Pinned',
                         selected: _showPinnedOnly,
@@ -268,122 +382,27 @@ class _HomeScreenState extends State<HomeScreen> {
                         style: const TextStyle(color: _muted),
                       ),
                     )
-                  : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
-                      itemCount: _notes.length,
-                      itemBuilder: (context, index) {
-                        final note = _notes[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          color: note.isPinned
-                              ? const Color(0xFF272536)
-                              : _surface,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
-                            side: BorderSide(
-                              color: note.isPinned
-                                  ? const Color(0xFF46405F)
-                                  : Colors.transparent,
-                            ),
-                          ),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(20),
-                            onTap: () => _openEditor(note: note),
-                            child: Padding(
-                              padding: const EdgeInsets.fromLTRB(
-                                16,
-                                14,
-                                10,
-                                14,
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          note.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      IconButton(
-                                        visualDensity: VisualDensity.compact,
-                                        tooltip: note.isPinned
-                                            ? 'Unpin note'
-                                            : 'Pin note',
-                                        onPressed: () => _togglePin(note),
-                                        icon: Icon(
-                                          note.isPinned
-                                              ? Icons.push_pin
-                                              : Icons.push_pin_outlined,
-                                          color: note.isPinned
-                                              ? _accent
-                                              : _muted,
-                                          size: 19,
-                                        ),
-                                      ),
-                                      PopupMenuButton<String>(
-                                        tooltip: 'More note actions',
-                                        color: _surface,
-                                        onSelected: (action) {
-                                          if (action == 'delete') {
-                                            _deleteNote(note);
-                                          }
-                                        },
-                                        itemBuilder: (context) => const [
-                                          PopupMenuItem(
-                                            value: 'delete',
-                                            child: Text('Delete'),
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                  if (note.content.isNotEmpty) ...[
-                                    Text(
-                                      note.content,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        color: Color(0xFFC3C1CC),
-                                        height: 1.4,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                  ],
-                                  Row(
-                                    children: [
-                                      Text(
-                                        _formatTime(note.createdAt),
-                                        style: const TextStyle(
-                                          color: _muted,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      const Text(
-                                        '·',
-                                        style: TextStyle(color: _muted),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        note.isPinned ? 'Pinned' : 'Note',
-                                        style: const TextStyle(
-                                          color: _accent,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
+                  : LayoutBuilder(
+                      builder: (context, constraints) {
+                        if (constraints.maxWidth >= 700) {
+                          return GridView.builder(
+                            padding: const EdgeInsets.fromLTRB(24, 4, 24, 96),
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 2,
+                                  childAspectRatio: 1.8,
+                                ),
+                            itemCount: _notes.length,
+                            itemBuilder: (context, index) =>
+                                _buildNoteCard(_notes[index], index),
+                          );
+                        }
+                        return ListView.builder(
+                          padding: const EdgeInsets.fromLTRB(16, 4, 16, 96),
+                          itemCount: _notes.length,
+                          itemBuilder: (context, index) => SizedBox(
+                            height: 150,
+                            child: _buildNoteCard(_notes[index], index),
                           ),
                         );
                       },
@@ -411,30 +430,31 @@ class _NoteTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? const Color(0xFFF4F2FA) : const Color(0xFF92919D);
-    return InkWell(
-      borderRadius: BorderRadius.circular(8),
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: color,
-                fontSize: 13,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-            if (count != null) ...[
-              const SizedBox(width: 6),
+    final color = selected ? Colors.white : const Color(0xFF6F7B75);
+    return Material(
+      color: selected ? const Color(0xFF32866A) : Colors.transparent,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
               Text(
-                '$count',
-                style: const TextStyle(color: Color(0xFF92919D), fontSize: 11),
+                label,
+                style: TextStyle(
+                  color: color,
+                  fontSize: 13,
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
               ),
+              if (count != null) ...[
+                const SizedBox(width: 6),
+                Text('$count', style: TextStyle(color: color, fontSize: 11)),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

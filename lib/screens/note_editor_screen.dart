@@ -13,8 +13,8 @@ class NoteEditorScreen extends StatefulWidget {
 }
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
-  static const _accent = Color(0xFFA99AFF);
-  static const _muted = Color(0xFF92919D);
+  static const _accent = Color(0xFF32866A);
+  static const _muted = Color(0xFF7C8790);
 
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
@@ -125,7 +125,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   TextButton.icon(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: _accent,
+                      foregroundColor: const Color(0xFF43534B),
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                     icon: const Icon(Icons.chevron_left, size: 22),
@@ -135,7 +135,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   if (widget.note != null)
                     PopupMenuButton<String>(
                       tooltip: 'More note actions',
-                      color: const Color(0xFF1B1B21),
+                      color: Colors.white,
                       onSelected: (action) {
                         if (action == 'delete') _deleteNote();
                       },
@@ -194,6 +194,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       style: const TextStyle(
+                        color: Color(0xFF26312D),
                         fontSize: 32,
                         height: 1.15,
                         fontWeight: FontWeight.w400,
@@ -217,7 +218,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         contentPadding: EdgeInsets.zero,
                       ),
                       style: const TextStyle(
-                        color: Color(0xFFC3C1CC),
+                        color: Color(0xFF46524D),
                         fontSize: 16,
                         height: 1.6,
                       ),

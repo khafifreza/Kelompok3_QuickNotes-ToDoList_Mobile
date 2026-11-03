@@ -28,11 +28,11 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF111115),
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: const Color(0xFFF4F6FA),
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFFA99AFF),
-          brightness: Brightness.dark,
+          seedColor: const Color(0xFF34876B),
+          brightness: Brightness.light,
         ),
       ),
       home: const HomeScreen(),
