@@ -21,7 +21,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _upgradeDB,
     );
@@ -34,6 +34,7 @@ class DBHelper {
         title TEXT NOT NULL,
         content TEXT NOT NULL,
         createdAt TEXT NOT NULL,
+        updatedAt TEXT NOT NULL,
         isPinned INTEGER NOT NULL DEFAULT 0
       )
     ''');
@@ -43,6 +44,15 @@ class DBHelper {
     if (oldVersion < 2) {
       await db.execute(
         'ALTER TABLE notes ADD COLUMN isPinned INTEGER NOT NULL DEFAULT 0',
+      );
+    }
+    if (oldVersion < 3) {
+      await db.execute(
+        "ALTER TABLE notes ADD COLUMN updatedAt TEXT NOT NULL DEFAULT ''",
+      );
+      await db.execute(
+        'UPDATE notes SET updatedAt = createdAt WHERE updatedAt = ?',
+        [''],
       );
     }
   }

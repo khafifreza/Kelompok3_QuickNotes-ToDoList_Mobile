@@ -5,7 +5,9 @@ import '../models/note_model.dart';
 import 'note_editor_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback onToggleTheme;
+
+  const HomeScreen({super.key, required this.onToggleTheme});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -13,15 +15,21 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   static const _accent = Color(0xFF32866A);
-  static const _surface = Color(0xFFFFFFFF);
-  static const _muted = Color(0xFF7C8790);
-  static const _noteColors = [
+  static const _lightNoteColors = [
     Color(0xFFFFF0B8),
     Color(0xFFD8F1F4),
     Color(0xFFE9DDF7),
     Color(0xFFFFE2CF),
     Color(0xFFE3E9F1),
     Color(0xFFDDF0E4),
+  ];
+  static const _darkNoteColors = [
+    Color(0xFF554A2B),
+    Color(0xFF29464A),
+    Color(0xFF443653),
+    Color(0xFF553A2B),
+    Color(0xFF34404F),
+    Color(0xFF30483A),
   ];
 
   List<Note> _notes = [];
@@ -68,7 +76,7 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Could not load notes: $error')));
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat catatan: $error')));
     }
   }
 
@@ -76,16 +84,16 @@ class _HomeScreenState extends State<HomeScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete note?'),
-        content: const Text('This note will be permanently deleted.'),
+        title: const Text('Hapus catatan?'),
+        content: const Text('Catatan ini akan dihapus secara permanen.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -95,7 +103,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await DBHelper.instance.deleteNote(note.id!);
     if (!mounted) return;
     ScaffoldMessenger.of(context)
-        .showSnackBar(const SnackBar(content: Text('Note deleted')));
+        .showSnackBar(const SnackBar(content: Text('Catatan dihapus')));
     await _refreshNotes(query: _searchController.text);
   }
 
@@ -106,6 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
         title: note.title,
         content: note.content,
         createdAt: note.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
         isPinned: !note.isPinned,
       ),
     );
@@ -114,9 +123,32 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _openEditor({Note? note}) async {
+    Note? openedNote = note;
+    if (note != null) {
+      openedNote = Note(
+        id: note.id,
+        title: note.title,
+        content: note.content,
+        createdAt: note.createdAt,
+        updatedAt: DateTime.now().toIso8601String(),
+        isPinned: note.isPinned,
+      );
+      try {
+        await DBHelper.instance.updateNote(openedNote);
+        if (!mounted) return;
+      } catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal memperbarui catatan: $error')),
+        );
+        return;
+      }
+    }
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => NoteEditorScreen(note: note)),
+      MaterialPageRoute(
+        builder: (context) => NoteEditorScreen(note: openedNote),
+      ),
     );
     if (!mounted) return;
     await _refreshNotes(query: _searchController.text);
@@ -127,17 +159,27 @@ class _HomeScreenState extends State<HomeScreen> {
     await _refreshNotes(query: _searchController.text);
   }
 
-  String _formatTime(String createdAt) {
-    final date = DateTime.tryParse(createdAt);
+  String _formatRelativeTime(String updatedAt) {
+    final date = DateTime.tryParse(updatedAt);
     if (date == null) return '';
-    return MaterialLocalizations.of(context)
-        .formatTimeOfDay(TimeOfDay.fromDateTime(date));
+
+    final elapsed = DateTime.now().difference(date);
+    if (elapsed.isNegative || elapsed.inMinutes < 1) return 'Baru saja';
+    if (elapsed.inHours < 1) return '${elapsed.inMinutes} menit lalu';
+    if (elapsed.inDays < 1) return '${elapsed.inHours} jam lalu';
+    if (elapsed.inDays < 7) return '${elapsed.inDays} hari lalu';
+    if (elapsed.inDays < 30) return '${elapsed.inDays ~/ 7} minggu lalu';
+    if (elapsed.inDays < 365) return '${elapsed.inDays ~/ 30} bulan lalu';
+    return '${elapsed.inDays ~/ 365} tahun lalu';
   }
 
   Widget _buildNoteCard(Note note, int index) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = note.isPinned
-        ? const Color(0xFFE0F0E7)
-        : _noteColors[index % _noteColors.length];
+        ? (isDark ? const Color(0xFF29483A) : const Color(0xFFE0F0E7))
+        : (isDark ? _darkNoteColors : _lightNoteColors)[index %
+              _lightNoteColors.length];
 
     return Card(
       margin: const EdgeInsets.all(6),
@@ -159,8 +201,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       note.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Color(0xFF28312E),
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -168,28 +210,28 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   IconButton(
                     visualDensity: VisualDensity.compact,
-                    tooltip: note.isPinned ? 'Unpin note' : 'Pin note',
+                    tooltip: note.isPinned
+                        ? 'Lepas sematan catatan'
+                        : 'Sematkan catatan',
                     onPressed: () => _togglePin(note),
                     icon: Icon(
                       note.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                      color: note.isPinned ? _accent : const Color(0xFF68736F),
+                      color: note.isPinned
+                          ? _accent
+                          : colorScheme.onSurfaceVariant,
                       size: 18,
                     ),
                   ),
                   PopupMenuButton<String>(
-                    tooltip: 'More note actions',
-                    color: _surface,
+                    tooltip: 'Aksi catatan lainnya',
+                    color: colorScheme.surface,
                     onSelected: (action) {
                       if (action == 'delete') _deleteNote(note);
                     },
                     itemBuilder: (context) => const [
-                      PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      PopupMenuItem(value: 'delete', child: Text('Hapus')),
                     ],
-                    icon: const Icon(
-                      Icons.delete_outline,
-                      color: Color(0xFF68736F),
-                      size: 20,
-                    ),
+                    icon: const Icon(Icons.delete_outline, size: 20),
                   ),
                 ],
               ),
@@ -198,7 +240,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   note.content,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: Color(0xFF59645F), height: 1.4),
+                  style: TextStyle(
+                    color: colorScheme.onSurfaceVariant,
+                    height: 1.4,
+                  ),
                 ),
                 const Spacer(),
               ] else
@@ -206,18 +251,18 @@ class _HomeScreenState extends State<HomeScreen> {
               Row(
                 children: [
                   Text(
-                    note.isPinned ? 'Pinned' : 'Note',
-                    style: const TextStyle(
-                      color: Color(0xFF53645C),
+                    note.isPinned ? 'Disematkan' : 'Catatan',
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    _formatTime(note.createdAt),
-                    style: const TextStyle(
-                      color: Color(0xFF68736F),
+                    _formatRelativeTime(note.updatedAt),
+                    style: TextStyle(
+                      color: colorScheme.onSurfaceVariant,
                       fontSize: 11,
                     ),
                   ),
@@ -232,10 +277,12 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
       floatingActionButton: FloatingActionButton(
-        backgroundColor: _accent,
-        foregroundColor: Colors.white,
+        backgroundColor: colorScheme.primary,
+        foregroundColor: colorScheme.onPrimary,
         onPressed: () => _openEditor(),
         child: const Icon(Icons.add),
       ),
@@ -249,14 +296,14 @@ class _HomeScreenState extends State<HomeScreen> {
                 children: [
                   Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Quick Notes',
+                              'Quick Notes & To-Do List',
                               style: TextStyle(
-                                color: Color(0xFF26312D),
+                                color: colorScheme.onSurface,
                                 fontSize: 27,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: -0.5,
@@ -266,7 +313,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                       PopupMenuButton<bool>(
-                        tooltip: 'Sort notes',
+                        tooltip: 'Urutkan catatan',
                         initialValue: _sortByTitle,
                         onSelected: (byTitle) {
                           setState(() {
@@ -275,22 +322,22 @@ class _HomeScreenState extends State<HomeScreen> {
                           });
                           _refreshNotes(query: _searchController.text);
                         },
-                        color: _surface,
+                        color: colorScheme.surface,
                         itemBuilder: (context) => const [
                           PopupMenuItem(
                             value: false,
-                            child: Text('Recently added'),
+                            child: Text('Baru ditambahkan'),
                           ),
                           PopupMenuItem(
                             value: true,
-                            child: Text('Title (A–Z)'),
+                            child: Text('Judul (A–Z)'),
                           ),
                         ],
                         child: Container(
                           width: 44,
                           height: 44,
                           decoration: BoxDecoration(
-                            color: _surface,
+                            color: colorScheme.surface,
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
@@ -300,9 +347,32 @@ class _HomeScreenState extends State<HomeScreen> {
                               ),
                             ],
                           ),
-                          child: const Icon(
-                            Icons.tune,
-                            color: Color(0xFF44524B),
+                          child: const Icon(Icons.tune),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: colorScheme.surface,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 12,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          tooltip: isDark
+                              ? 'Ganti ke tema terang'
+                              : 'Ganti ke tema gelap',
+                          onPressed: widget.onToggleTheme,
+                          icon: Icon(
+                            isDark ? Icons.light_mode : Icons.dark_mode,
+                            color: colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ),
@@ -313,13 +383,19 @@ class _HomeScreenState extends State<HomeScreen> {
                     controller: _searchController,
                     onChanged: (value) => _refreshNotes(query: value),
                     decoration: InputDecoration(
-                      hintText: 'Search your notes',
-                      hintStyle: const TextStyle(color: _muted),
-                      prefixIcon: const Icon(Icons.search, color: _muted),
+                      hintText: 'Cari catatan',
+                      hintStyle: TextStyle(color: colorScheme.onSurfaceVariant),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
                       suffixIcon: _searchController.text.isEmpty
                           ? null
                           : IconButton(
-                              icon: const Icon(Icons.close, color: _muted),
+                              icon: Icon(
+                                Icons.close,
+                                color: colorScheme.onSurfaceVariant,
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() {});
@@ -327,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                             ),
                       filled: true,
-                      fillColor: _surface,
+                      fillColor: colorScheme.surface,
                       contentPadding: const EdgeInsets.symmetric(vertical: 14),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -343,27 +419,31 @@ class _HomeScreenState extends State<HomeScreen> {
                   Row(
                     children: [
                       _NoteTab(
-                        label: 'All',
+                        label: 'Semua',
                         count: _showPinnedOnly ? null : _notes.length,
                         selected: !_showPinnedOnly,
                         onTap: () => _setPinnedFilter(false),
                       ),
                       const SizedBox(width: 8),
                       _NoteTab(
-                        label: 'Pinned',
+                        label: 'Disematkan',
                         selected: _showPinnedOnly,
                         onTap: () => _setPinnedFilter(true),
                       ),
                       const Spacer(),
                       IconButton(
                         tooltip: _sortAscending
-                            ? 'Sort newest first'
-                            : 'Reverse sort order',
+                            ? 'Urutkan dari yang terbaru'
+                            : 'Balik urutan',
                         onPressed: () {
                           setState(() => _sortAscending = !_sortAscending);
                           _refreshNotes(query: _searchController.text);
                         },
-                        icon: const Icon(Icons.sort, color: _muted, size: 20),
+                        icon: Icon(
+                          Icons.sort,
+                          color: colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
                       ),
                     ],
                   ),
@@ -377,9 +457,9 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? Center(
                       child: Text(
                         _showPinnedOnly
-                            ? 'No pinned notes yet.'
-                            : 'No notes found.',
-                        style: const TextStyle(color: _muted),
+                            ? 'Belum ada catatan yang disematkan.'
+                            : 'Catatan tidak ditemukan.',
+                        style: TextStyle(color: colorScheme.onSurfaceVariant),
                       ),
                     )
                   : LayoutBuilder(
@@ -430,9 +510,12 @@ class _NoteTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? Colors.white : const Color(0xFF6F7B75);
+    final colorScheme = Theme.of(context).colorScheme;
+    final color = selected
+        ? colorScheme.onPrimary
+        : colorScheme.onSurfaceVariant;
     return Material(
-      color: selected ? const Color(0xFF32866A) : Colors.transparent,
+      color: selected ? colorScheme.primary : Colors.transparent,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         borderRadius: BorderRadius.circular(20),

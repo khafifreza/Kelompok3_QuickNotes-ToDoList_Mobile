@@ -14,7 +14,6 @@ class NoteEditorScreen extends StatefulWidget {
 
 class _NoteEditorScreenState extends State<NoteEditorScreen> {
   static const _accent = Color(0xFF32866A);
-  static const _muted = Color(0xFF7C8790);
 
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _titleController;
@@ -52,6 +51,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             title: title,
             content: content,
             createdAt: timestamp,
+            updatedAt: timestamp,
             isPinned: _isPinned,
           ),
         );
@@ -62,6 +62,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             title: title,
             content: content,
             createdAt: widget.note!.createdAt,
+            updatedAt: timestamp,
             isPinned: _isPinned,
           ),
         );
@@ -69,12 +70,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Note saved')));
+          .showSnackBar(const SnackBar(content: Text('Catatan tersimpan')));
       Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Could not save note: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Gagal menyimpan catatan: $error')),
+      );
     }
   }
 
@@ -84,16 +86,16 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete note?'),
-        content: const Text('This note will be permanently deleted.'),
+        title: const Text('Hapus catatan?'),
+        content: const Text('Catatan ini akan dihapus secara permanen.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Batal'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
+            child: const Text('Hapus'),
           ),
         ],
       ),
@@ -114,6 +116,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -125,24 +128,24 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                   TextButton.icon(
                     onPressed: () => Navigator.pop(context),
                     style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF43534B),
+                      foregroundColor: colorScheme.onSurface,
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
                     icon: const Icon(Icons.chevron_left, size: 22),
-                    label: const Text('Notes'),
+                    label: const Text('Catatan'),
                   ),
                   const Spacer(),
                   if (widget.note != null)
                     PopupMenuButton<String>(
-                      tooltip: 'More note actions',
-                      color: Colors.white,
+                      tooltip: 'Aksi catatan lainnya',
+                      color: colorScheme.surface,
                       onSelected: (action) {
                         if (action == 'delete') _deleteNote();
                       },
                       itemBuilder: (context) => const [
                         PopupMenuItem(
                           value: 'delete',
-                          child: Text('Delete note'),
+                          child: Text('Hapus catatan'),
                         ),
                       ],
                     ),
@@ -152,7 +155,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       foregroundColor: _accent,
                       textStyle: const TextStyle(fontWeight: FontWeight.w600),
                     ),
-                    child: const Text('Done'),
+                    child: const Text('Selesai'),
                   ),
                 ],
               ),
@@ -168,18 +171,25 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                         Expanded(
                           child: Text(
                             _formatCreatedAt(context),
-                            style: const TextStyle(color: _muted, fontSize: 13),
+                            style: TextStyle(
+                              color: colorScheme.onSurfaceVariant,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                         IconButton(
-                          tooltip: _isPinned ? 'Unpin note' : 'Pin note',
+                          tooltip: _isPinned
+                              ? 'Lepas sematan catatan'
+                              : 'Sematkan catatan',
                           onPressed: () =>
                               setState(() => _isPinned = !_isPinned),
                           icon: Icon(
                             _isPinned
                                 ? Icons.push_pin
                                 : Icons.push_pin_outlined,
-                            color: _isPinned ? _accent : _muted,
+                            color: _isPinned
+                                ? _accent
+                                : colorScheme.onSurfaceVariant,
                           ),
                         ),
                       ],
@@ -188,13 +198,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       controller: _titleController,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        hintText: 'Title',
-                        hintStyle: TextStyle(color: _muted),
+                        hintText: 'Judul',
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                       ),
-                      style: const TextStyle(
-                        color: Color(0xFF26312D),
+                      style: TextStyle(
+                        color: colorScheme.onSurface,
                         fontSize: 32,
                         height: 1.15,
                         fontWeight: FontWeight.w400,
@@ -202,7 +211,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       ),
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Title cannot be empty';
+                          return 'Judul tidak boleh kosong';
                         }
                         return null;
                       },
@@ -212,13 +221,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       controller: _contentController,
                       textCapitalization: TextCapitalization.sentences,
                       decoration: const InputDecoration(
-                        hintText: 'Write your thoughts...',
-                        hintStyle: TextStyle(color: _muted),
+                        hintText: 'Tulis catatan...',
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.zero,
                       ),
-                      style: const TextStyle(
-                        color: Color(0xFF46524D),
+                      style: TextStyle(
+                        color: colorScheme.onSurfaceVariant,
                         fontSize: 16,
                         height: 1.6,
                       ),
@@ -227,7 +235,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                       keyboardType: TextInputType.multiline,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
-                          return 'Note content cannot be empty';
+                          return 'Isi catatan tidak boleh kosong';
                         }
                         return null;
                       },
